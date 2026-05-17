@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Low Float Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080c10;
+  --bg2:      #0d1219;
+  --bg3:      #121820;
+  --border:   #1e2830;
+  --text:     #e8edf2;
+  --muted:    #5a6a7a;
+  --accent:   #00d4ff;
+  --green:    #00e676;
+  --yellow:   #ffd600;
+  --red:      #ff3d57;
+  --grade-a:  #00e676;
+  --grade-b:  #00d4ff;
+  --grade-c:  #ffd600;
+  --grade-d:  #5a6a7a;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { position:relative; z-index:1; max-width:1400px; margin:0 auto; padding:20px; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0 30px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  width: 42px; height: 42px;
+  background: linear-gradient(135deg, #00d4ff22, #00e67622);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.logo-text span { color: var(--accent); }
+
+.logo-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.status-dot.active {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.market {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Stats bar */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-value.green { color: var(--green); }
+.stat-value.accent { color: var(--accent); }
+.stat-value.yellow { color: var(--yellow); }
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Main layout */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+}
+
+/* Alerts panel */
+.panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.panel-badge {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+}
+
+.btn-clear {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+/* Alert cards */
+.alerts-list {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.alerts-list::-webkit-scrollbar { width: 4px; }
+.alerts-list::-webkit-scrollbar-track { background: transparent; }
+.alerts-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.alert-card {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+  animation: slideIn 0.3s ease;
+  cursor: pointer;
+}
+
+.alert-card:hover { background: var(--bg3); }
+.alert-card:last-child { border-bottom: none; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.alert-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.alert-ticker {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.grade-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
+}
+
+.grade-A { background: #00e67622; color: var(--grade-a); border: 1px solid #00e67644; }
+.grade-B { background: #00d4ff22; color: var(--grade-b); border: 1px solid #00d4ff44; }
+.grade-C { background: #ffd60022; color: var(--grade-c); border: 1px solid #ffd60044; }
+.grade-D { background: #5a6a7a22; color: var(--grade-d); border: 1px solid #5a6a7a44; }
+
+.cat-tag {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.alert-gap {
+  margin-left: auto;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--green);
+}
+
+.alert-headline {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.alert-metrics {
+  display: flex;
+  gap: 14px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.metric-value {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+
+.alert-time {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 8px;
+}
+
+/* Empty state */
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.3; }
+.empty-title { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+.empty-sub { font-size: 12px; color: var(--muted); opacity: 0.6; font-family: 'JetBrains Mono', monospace; }
+
+/* Right sidebar */
+.sidebar { display: flex; flex-direction: column; gap: 14px; }
+
+/* Feed status */
+.feed-list { padding: 4px 0; }
+
+.feed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.feed-row:last-child { border-bottom: none; }
+
+.feed-name {
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.feed-count {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg3);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.feed-count.ok { color: var(--green); }
+.feed-count.err { color: var(--red); }
+
+/* Settings panel */
+.settings-grid {
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.setting-item {}
+
+.setting-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+}
+
+.setting-value {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+}
+
+/* Pushover status */
+.pushover-card {
+  padding: 16px 20px;
+}
+
+.pushover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.pushover-icon { font-size: 20px; }
+.pushover-text { flex: 1; }
+.pushover-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.pushover-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.pushover-status { font-size: 11px; font-weight: 600; }
+.pushover-status.ok { color: var(--green); }
+.pushover-status.no { color: var(--red); }
+
+/* Last scan */
+.last-scan {
+  padding: 12px 20px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .sidebar { order: -1; }
+}
+
+@media (max-width: 500px) {
+  .stats-bar { grid-template-columns: 1fr 1fr; }
+  .header { flex-direction: column; gap: 14px; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <div>
+        <div class="logo-text">Low Float <span>Scanner</span></div>
+        <div class="logo-sub">CATALYST DETECTION SYSTEM</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill" id="marketStatus">
+        <div class="status-dot" id="marketDot"></div>
+        <span id="marketText">Checking...</span>
+      </div>
+      <div class="status-pill" id="scanStatus">
+        <div class="status-dot" id="scanDot"></div>
+        <span id="scanText">Starting...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Alerts Today</div>
+      <div class="stat-value green" id="statAlerts">0</div>
+      <div class="stat-sub">total signals fired</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Grade A Alerts</div>
+      <div class="stat-value accent" id="statGradeA">0</div>
+      <div class="stat-sub">highest conviction</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Scans Done</div>
+      <div class="stat-value yellow" id="statScans">0</div>
+      <div class="stat-sub">since startup</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Feeds Active</div>
+      <div class="stat-value" id="statFeeds">8</div>
+      <div class="stat-sub">news sources</div>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div class="main-grid">
+
+    <!-- Alerts panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Live Alerts</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="panel-badge" id="alertCount">0 alerts</div>
+          <button class="btn-clear" onclick="clearAlerts()">Clear</button>
+        </div>
+      </div>
+      <div class="alerts-list" id="alertsList">
+        <div class="empty-state">
+          <div class="empty-icon">📡</div>
+          <div class="empty-title">Watching for catalysts...</div>
+          <div class="empty-sub">FDA · Mergers · Contracts · Earnings</div>
+        </div>
+      </div>
+      <div class="last-scan">Last scan: <span id="lastScan">—</span></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Pushover status -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Phone Alerts</div>
+        </div>
+        <div class="pushover-card">
+          <div class="pushover-row">
+            <div class="pushover-icon">📱</div>
+            <div class="pushover-text">
+              <div class="pushover-title">Pushover</div>
+              <div class="pushover-sub">Push notifications</div>
+            </div>
+            <div class="pushover-status" id="pushoverStatus">Checking...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed status -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Feed Status</div>
+          <div class="panel-badge" id="feedCount">8 feeds</div>
+        </div>
+        <div class="feed-list" id="feedList">
+          <div style="padding:20px;text-align:center;font-size:12px;color:var(--muted)">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Scanner Settings</div>
+        </div>
+        <div class="settings-grid" id="settingsGrid">
+          <div class="setting-item">
+            <div class="setting-label">Min Score</div>
+            <div class="setting-value" id="setScore">—</div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">Min Gap</div>
+            <div class="setting-value" id="setGap">—</div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">Max Float</div>
+            <div class="setting-value" id="setFloat">—</div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">Min RVOL</div>
+            <div class="setting-value" id="setRvol">—</div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">Price Range</div>
+            <div class="setting-value" id="setPrice">—</div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">Scan Every</div>
+            <div class="setting-value" id="setScan">—</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let lastAlertCount = 0;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function playAlert(grade) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = grade === 'A' ? 880 : 660;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+function gradeColor(g) {
+  if (g === 'A') return 'var(--grade-a)';
+  if (g === 'B') return 'var(--grade-b)';
+  if (g === 'C') return 'var(--grade-c)';
+  return 'var(--grade-d)';
+}
+
+function catEmoji(cat) {
+  const map = {
+    'FDA Approval': '💊',
+    'Clinical Trial Win': '🧬',
+    'Merger Acquisition': '🤝',
+    'Government Contract': '🛡️',
+    'Earnings Beat': '📈',
+    'Short Squeeze': '🔥',
+    'Partnership Deal': '🔗',
+    'Energy Surge': '⚡',
+    'Defence Surge': '🎯',
+  };
+  return map[cat] || '📰';
+}
+
+function renderAlerts(alerts) {
+  const list = document.getElementById('alertsList');
+  const count = document.getElementById('alertCount');
+  const statAlerts = document.getElementById('statAlerts');
+  const statGradeA = document.getElementById('statGradeA');
+
+  count.textContent = alerts.length + ' alerts';
+  statAlerts.textContent = alerts.length;
+  statGradeA.textContent = alerts.filter(a => a.grade === 'A').length;
+
+  if (alerts.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-title">Watching for catalysts...</div><div class="empty-sub">FDA · Mergers · Contracts · Earnings</div></div>';
+    return;
+  }
+
+  list.innerHTML = alerts.map(function(a) {
+    return '<div class="alert-card" onclick="window.open(\'' + (a.url || '#') + '\', \'_blank\')">' +
+      '<div class="alert-top">' +
+        '<span class="alert-ticker">' + a.ticker + '</span>' +
+        '<span class="grade-badge grade-' + a.grade + '">GRADE ' + a.grade + '</span>' +
+        '<span class="cat-tag">' + catEmoji(a.cat) + ' ' + a.cat + '</span>' +
+        '<span class="alert-gap">+' + a.gap + '%</span>' +
+      '</div>' +
+      '<div class="alert-headline">' + a.headline + '</div>' +
+      '<div class="alert-metrics">' +
+        '<div class="metric"><div class="metric-label">Price</div><div class="metric-value">$' + a.price + '</div></div>' +
+        '<div class="metric"><div class="metric-label">Volume</div><div class="metric-value">' + a.vol_str + '</div></div>' +
+        '<div class="metric"><div class="metric-label">Float</div><div class="metric-value">' + a.fm + 'M</div></div>' +
+        '<div class="metric"><div class="metric-label">RVOL</div><div class="metric-value">' + a.rvol + 'x</div></div>' +
+        '<div class="metric"><div class="metric-label">Score</div><div class="metric-value">' + a.score + '/10</div></div>' +
+      '</div>' +
+      '<div class="alert-time">' + a.date + ' · ' + a.time + '</div>' +
+    '</div>';
+  }).join('');
+
+  if (alerts.length > lastAlertCount && lastAlertCount > 0) {
+    playAlert(alerts[0].grade);
+    if (Notification.permission === 'granted') {
+      new Notification('Low Float Alert: ' + alerts[0].ticker, {
+        body: alerts[0].cat + ' — Grade ' + alerts[0].grade + ' +' + alerts[0].gap + '%',
+        icon: '📡',
+      });
+    }
+  }
+  lastAlertCount = alerts.length;
+}
+
+function renderStatus(status) {
+  const marketDot  = document.getElementById('marketDot');
+  const marketText = document.getElementById('marketText');
+  const scanDot    = document.getElementById('scanDot');
+  const scanText   = document.getElementById('scanText');
+  const lastScan   = document.getElementById('lastScan');
+  const statScans  = document.getElementById('statScans');
+  const pushSt     = document.getElementById('pushoverStatus');
+
+  if (status.market_open) {
+    marketDot.className = 'status-dot market';
+    marketText.textContent = 'Market Open';
+  } else {
+    marketDot.className = 'status-dot';
+    marketText.textContent = 'Market Closed';
+  }
+
+  if (status.scanning) {
+    scanDot.className = 'status-dot active';
+    scanText.textContent = 'Scanning';
+  } else {
+    scanDot.className = 'status-dot';
+    scanText.textContent = status.market_open ? 'Idle' : 'Sleeping';
+  }
+
+  lastScan.textContent = status.last_scan || 'Not yet';
+  statScans.textContent = status.scan_count;
+
+  if (status.pushover_ok) {
+    pushSt.textContent = 'Connected ✓';
+    pushSt.className = 'pushover-status ok';
+  } else {
+    pushSt.textContent = 'Not set up';
+    pushSt.className = 'pushover-status no';
+  }
+
+  const feeds = status.feeds || {};
+  const names = Object.keys(feeds);
+  const feedList = document.getElementById('feedList');
+  const feedCount = document.getElementById('feedCount');
+  const statFeeds = document.getElementById('statFeeds');
+  feedCount.textContent = names.length + ' feeds';
+  statFeeds.textContent = names.length;
+
+  if (names.length > 0) {
+    feedList.innerHTML = names.map(function(name) {
+      const val = feeds[name];
+      const isOk = val && val.indexOf('items') > -1;
+      const isErr = val && (val.indexOf('Error') > -1 || val.indexOf('HTTP') > -1);
+      const cls = isOk ? 'ok' : isErr ? 'err' : '';
+      return '<div class="feed-row"><span class="feed-name">' + name + '</span><span class="feed-count ' + cls + '">' + (val || '—') + '</span></div>';
+    }).join('');
+  }
+}
+
+function renderSettings(s) {
+  document.getElementById('setScore').textContent  = s.MIN_SCORE + '/10';
+  document.getElementById('setGap').textContent    = s.MIN_GAP + '%';
+  document.getElementById('setFloat').textContent  = s.MAX_FLOAT + 'M';
+  document.getElementById('setRvol').textContent   = s.MIN_RVOL + 'x';
+  document.getElementById('setPrice').textContent  = '$' + s.MIN_PRICE + '-$' + s.MAX_PRICE;
+  document.getElementById('setScan').textContent   = s.SCAN_SECS + 's';
+}
+
+function clearAlerts() {
+  fetch('/api/clear', {method: 'POST'})
+    .then(function() { lastAlertCount = 0; refresh(); });
+}
+
+function refresh() {
+  fetch('/api/alerts')
+    .then(function(r) { return r.json(); })
+    .then(renderAlerts)
+    .catch(function(e) { console.log('alerts error', e); });
+
+  fetch('/api/status')
+    .then(function(r) { return r.json(); })
+    .then(renderStatus)
+    .catch(function(e) { console.log('status error', e); });
+}
+
+function loadSettings() {
+  fetch('/api/settings')
+    .then(function(r) { return r.json(); })
+    .then(renderSettings)
+    .catch(function(e) { console.log('settings error', e); });
+}
+
+// Request browser notifications
+if (Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// Load settings once
+loadSettings();
+
+// Refresh every 10 seconds
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>
